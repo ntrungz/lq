@@ -1,0 +1,1219 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Câu Cá Vạn Cân</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ui-bg: rgba(10, 18, 28, 0.7);
+      --ui-border: rgba(255, 255, 255, 0.1);
+      --accent: #4ad6ff;
+      --warn: #ffd166;
+      --danger: #ff4d4d;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #050b12;
+      font-family: "Segoe UI", Roboto, sans-serif;
+    }
+    #game {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+    .panel {
+      pointer-events: auto;
+      background: var(--ui-bg);
+      border: 1px solid var(--ui-border);
+      padding: 20px 26px;
+      border-radius: 16px;
+      text-align: center;
+      color: #e8f1ff;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+    .panel h1 {
+      font-size: 28px;
+      margin: 0 0 10px;
+      color: var(--accent);
+    }
+    .panel button {
+      margin-top: 12px;
+      background: var(--accent);
+      border: none;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    #hud {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      color: #e8f1ff;
+      font-size: 14px;
+    }
+    .hud-top {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      right: 10px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .bar {
+      position: relative;
+      height: 14px;
+      width: 220px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.1);
+      overflow: hidden;
+      border: 1px solid var(--ui-border);
+    }
+    .bar > span {
+      position: absolute;
+      inset: 0;
+      transform-origin: left center;
+      background: linear-gradient(90deg, #3ee7a2, #4ad6ff);
+    }
+    .bar.tension > span {
+      background: linear-gradient(90deg, #3ee7a2, #ffd166, #ff4d4d);
+    }
+    .bar.label::after {
+      content: attr(data-label);
+      position: absolute;
+      left: 8px;
+      top: -18px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.7);
+    }
+    .hud-stats {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      text-align: right;
+      background: var(--ui-bg);
+      padding: 8px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--ui-border);
+      min-width: 180px;
+    }
+    .modifier-row {
+      display: flex;
+      gap: 6px;
+      margin-top: 6px;
+      justify-content: flex-end;
+    }
+    .modifier {
+      width: 26px;
+      height: 26px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.08);
+      display: grid;
+      place-items: center;
+      font-size: 16px;
+      border: 1px solid var(--ui-border);
+    }
+    .hud-bottom {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      right: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 12px;
+      pointer-events: none;
+    }
+    .controls {
+      display: flex;
+      gap: 10px;
+      pointer-events: auto;
+    }
+    .control-btn {
+      width: 96px;
+      height: 96px;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid var(--ui-border);
+      color: #e8f1ff;
+      display: grid;
+      place-items: center;
+      font-weight: 600;
+      text-transform: uppercase;
+      position: relative;
+      overflow: hidden;
+      touch-action: none;
+    }
+    .cooldown {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      transform-origin: center;
+      clip-path: circle(50%);
+    }
+    #pause-panel {
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+    }
+    #pause-panel input[type="range"] {
+      width: 200px;
+    }
+    .popup {
+      position: absolute;
+      top: 40%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: var(--ui-bg);
+      padding: 14px 20px;
+      border-radius: 14px;
+      border: 1px solid var(--ui-border);
+      color: #fff;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+    .popup.show {
+      opacity: 1;
+    }
+    #debug {
+      position: absolute;
+      bottom: 120px;
+      left: 10px;
+      background: rgba(0,0,0,0.5);
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      display: none;
+    }
+    @media (max-width: 700px) {
+      .hud-top {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .bar {
+        width: 200px;
+      }
+      .control-btn {
+        width: 80px;
+        height: 80px;
+      }
+      .hud-stats {
+        top: auto;
+        bottom: 120px;
+        right: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game"></canvas>
+  <div id="hud">
+    <div class="hud-top">
+      <div class="bar tension label" id="tension-bar" data-label="Tension"><span></span></div>
+      <div class="bar label" id="stamina-bar" data-label="Fish Stamina"><span></span></div>
+      <div class="bar label" id="rod-bar" data-label="Rod Durability"><span></span></div>
+      <div class="bar label" id="line-bar" data-label="Line Integrity"><span></span></div>
+    </div>
+    <div class="hud-stats">
+      <div><strong>Score:</strong> <span id="score">0</span> kg</div>
+      <div><strong>Combo:</strong> x<span id="combo">1</span></div>
+      <div><strong>Time:</strong> <span id="time">0:00</span></div>
+      <div><strong>Max Catch:</strong> <span id="record">0</span> kg</div>
+      <div class="modifier-row" id="modifiers"></div>
+    </div>
+    <div class="hud-bottom">
+      <div class="controls" id="mobile-controls">
+        <div class="control-btn" data-action="reel">Reel<div class="cooldown"></div></div>
+        <div class="control-btn" data-action="ease">Ease<div class="cooldown"></div></div>
+        <div class="control-btn" data-action="pump">Pump<div class="cooldown"></div></div>
+      </div>
+      <div class="controls" style="pointer-events:none;opacity:0.9;">
+        <div>Hold LMB: Reel</div>
+        <div>Shift/RMB: Ease</div>
+        <div>Space: Pump</div>
+        <div>A/D: Angle</div>
+      </div>
+    </div>
+  </div>
+  <div class="overlay" id="start-overlay">
+    <div class="panel">
+      <h1>Câu Cá Vạn Cân</h1>
+      <div>Giữ nhịp kéo để hạ gục cá vạn cân!</div>
+      <button id="start-btn">Bắt đầu</button>
+    </div>
+  </div>
+  <div class="overlay" id="pause-overlay" style="display:none;">
+    <div class="panel" id="pause-panel">
+      <h1>Tạm dừng</h1>
+      <label>Master <input type="range" id="vol-master" min="0" max="1" step="0.01" value="0.8" /></label>
+      <label>Music <input type="range" id="vol-music" min="0" max="1" step="0.01" value="0.6" /></label>
+      <label>SFX <input type="range" id="vol-sfx" min="0" max="1" step="0.01" value="0.8" /></label>
+      <button id="resume-btn">Tiếp tục</button>
+    </div>
+  </div>
+  <div class="popup" id="catch-popup"></div>
+  <div id="debug"></div>
+  <script>
+    //Core
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const hud = {
+      tension: document.querySelector('#tension-bar > span'),
+      stamina: document.querySelector('#stamina-bar > span'),
+      rod: document.querySelector('#rod-bar > span'),
+      line: document.querySelector('#line-bar > span'),
+      score: document.getElementById('score'),
+      combo: document.getElementById('combo'),
+      time: document.getElementById('time'),
+      record: document.getElementById('record'),
+      modifiers: document.getElementById('modifiers'),
+      popup: document.getElementById('catch-popup'),
+      debug: document.getElementById('debug')
+    };
+    const startOverlay = document.getElementById('start-overlay');
+    const pauseOverlay = document.getElementById('pause-overlay');
+    const startBtn = document.getElementById('start-btn');
+    const resumeBtn = document.getElementById('resume-btn');
+    const mobileControls = document.getElementById('mobile-controls');
+
+    let dpr = window.devicePixelRatio || 1;
+    let width = 0;
+    let height = 0;
+
+    const state = {
+      running: false,
+      paused: false,
+      lastTime: 0,
+      accumulator: 0,
+      time: 0,
+      score: 0,
+      combo: 1,
+      lives: 3,
+      record: parseFloat(localStorage.getItem('ccvc_record') || '0')
+    };
+
+    //Util
+    const Util = {
+      clamp: (v, min, max) => Math.max(min, Math.min(max, v)),
+      lerp: (a, b, t) => a + (b - a) * t,
+      rand: (min, max) => Math.random() * (max - min) + min,
+      randInt: (min, max) => Math.floor(Math.random() * (max - min + 1)) + min,
+      smoothstep: (t) => t * t * (3 - 2 * t),
+      formatTime: (t) => {
+        const m = Math.floor(t / 60);
+        const s = Math.floor(t % 60).toString().padStart(2, '0');
+        return `${m}:${s}`;
+      }
+    };
+
+    //Input
+    const Input = {
+      reel: false,
+      ease: false,
+      pump: false,
+      pumpCooldown: 0,
+      angle: 0,
+      pointerX: 0,
+      activeTouchId: null,
+      init() {
+        window.addEventListener('keydown', (e) => {
+          if (e.code === 'Space') { Input.triggerPump(); }
+          if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') Input.ease = true;
+          if (e.code === 'KeyA' || e.code === 'ArrowLeft') Input.angle = Util.clamp(Input.angle - 0.08, -0.6, 0.6);
+          if (e.code === 'KeyD' || e.code === 'ArrowRight') Input.angle = Util.clamp(Input.angle + 0.08, -0.6, 0.6);
+          if (e.code === 'Escape') togglePause();
+          if (e.code === 'F1') {
+            e.preventDefault();
+            debugEnabled = !debugEnabled;
+            hud.debug.style.display = debugEnabled ? 'block' : 'none';
+          }
+        });
+        window.addEventListener('keyup', (e) => {
+          if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') Input.ease = false;
+        });
+        canvas.addEventListener('mousedown', (e) => {
+          if (e.button === 0) Input.reel = true;
+          if (e.button === 2) Input.ease = true;
+        });
+        canvas.addEventListener('mouseup', (e) => {
+          if (e.button === 0) Input.reel = false;
+          if (e.button === 2) Input.ease = false;
+        });
+        canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+        canvas.addEventListener('mousemove', (e) => {
+          const rect = canvas.getBoundingClientRect();
+          Input.pointerX = (e.clientX - rect.left) / rect.width;
+          Input.angle = Util.clamp((Input.pointerX - 0.5) * 1.2, -0.6, 0.6);
+        });
+
+        mobileControls.addEventListener('touchstart', Input.handleTouchStart, { passive: false });
+        mobileControls.addEventListener('touchmove', Input.handleTouchMove, { passive: false });
+        mobileControls.addEventListener('touchend', Input.handleTouchEnd, { passive: false });
+        canvas.addEventListener('touchstart', Input.handleCanvasTouch, { passive: false });
+        canvas.addEventListener('touchmove', Input.handleCanvasTouch, { passive: false });
+        canvas.addEventListener('touchend', () => {
+          Input.activeTouchId = null;
+        });
+      },
+      handleTouchStart(e) {
+        e.preventDefault();
+        for (const t of e.changedTouches) {
+          const target = t.target.closest('.control-btn');
+          if (!target) continue;
+          const action = target.dataset.action;
+          if (action === 'reel') Input.reel = true;
+          if (action === 'ease') Input.ease = true;
+          if (action === 'pump') Input.triggerPump();
+        }
+      },
+      handleTouchMove(e) { e.preventDefault(); },
+      handleTouchEnd(e) {
+        e.preventDefault();
+        for (const t of e.changedTouches) {
+          const target = t.target.closest('.control-btn');
+          if (!target) continue;
+          const action = target.dataset.action;
+          if (action === 'reel') Input.reel = false;
+          if (action === 'ease') Input.ease = false;
+        }
+      },
+      handleCanvasTouch(e) {
+        e.preventDefault();
+        const touch = e.touches[0];
+        if (!touch) return;
+        const rect = canvas.getBoundingClientRect();
+        Input.pointerX = (touch.clientX - rect.left) / rect.width;
+        Input.angle = Util.clamp((Input.pointerX - 0.5) * 1.2, -0.6, 0.6);
+      },
+      triggerPump() {
+        if (Input.pumpCooldown <= 0) {
+          Input.pump = true;
+          Input.pumpCooldown = 1.6;
+        }
+      }
+    };
+
+    //World
+    const World = {
+      wind: 0,
+      current: 0,
+      hazard: 0,
+      hazardZones: [],
+      initRunModifiers() {
+        this.wind = Util.rand(-0.35, 0.35);
+        this.current = Util.rand(-0.25, 0.25);
+        this.hazard = Util.rand(0.1, 0.35);
+        this.hazardZones = [];
+        for (let i = 0; i < 3; i += 1) {
+          this.hazardZones.push({
+            x: Util.rand(0.15, 0.85),
+            y: Util.rand(0.55, 0.85),
+            r: Util.rand(0.08, 0.14)
+          });
+        }
+        hud.modifiers.innerHTML = '';
+        const mods = [
+          { icon: '🌬️', value: Math.abs(this.wind) },
+          { icon: '🌊', value: Math.abs(this.current) },
+          { icon: '🪨', value: this.hazard }
+        ];
+        mods.forEach((mod) => {
+          const el = document.createElement('div');
+          el.className = 'modifier';
+          el.title = `${mod.value.toFixed(2)}`;
+          el.textContent = mod.icon;
+          hud.modifiers.appendChild(el);
+        });
+      },
+      waterY() {
+        return height * 0.45;
+      }
+    };
+
+    //FishAI
+    const FishAI = {
+      fish: null,
+      heat: 0,
+      spawnTimer: 2,
+      bossReady: false,
+      createFish(rarity) {
+        const base = {
+          rarity,
+          x: width * 0.5,
+          y: height * 0.75,
+          vx: 0,
+          vy: 0,
+          stamina: 1,
+          maxStamina: 1,
+          weight: Util.rand(5, 20),
+          burst: 0,
+          burstCooldown: Util.rand(3, 6),
+          phase: 1,
+          isBoss: false
+        };
+        const rarityData = {
+          Common: { weight: Util.rand(6, 20), stamina: 0.8 },
+          Rare: { weight: Util.rand(20, 40), stamina: 1.0 },
+          Epic: { weight: Util.rand(40, 80), stamina: 1.2 },
+          Legendary: { weight: Util.rand(80, 150), stamina: 1.4 },
+          Boss: { weight: Util.rand(200, 400), stamina: 1.8 }
+        };
+        const data = rarityData[rarity];
+        base.weight = data.weight;
+        base.stamina = data.stamina;
+        base.maxStamina = data.stamina;
+        base.isBoss = rarity === 'Boss';
+        return base;
+      },
+      pickRarity() {
+        const roll = Math.random();
+        if (this.bossReady) return 'Boss';
+        if (roll < 0.6) return 'Common';
+        if (roll < 0.82) return 'Rare';
+        if (roll < 0.94) return 'Epic';
+        if (roll < 0.985) return 'Legendary';
+        return 'Legendary';
+      },
+      update(dt) {
+        if (!this.fish) {
+          this.spawnTimer -= dt;
+          if (this.spawnTimer <= 0) {
+            const rarity = this.pickRarity();
+            this.fish = this.createFish(rarity);
+            this.spawnTimer = Util.rand(5, 8);
+            ReelFight.setState('bite');
+            Audio.playSfx('bite');
+          }
+          return;
+        }
+        const fish = this.fish;
+        fish.burstCooldown -= dt;
+        if (fish.burstCooldown <= 0) {
+          fish.burst = Util.rand(1.2, 2.2);
+          fish.burstCooldown = Util.rand(3, 5);
+          VFX.spawnBurst(fish.x, fish.y);
+          Audio.playSfx('burst');
+        }
+        if (fish.burst > 0) {
+          fish.burst -= dt;
+        }
+        fish.vx += (World.current * 0.3 + Util.rand(-0.1, 0.1)) * dt;
+        fish.vy += Util.rand(-0.1, 0.1) * dt;
+        fish.vx = Util.clamp(fish.vx, -0.8, 0.8);
+        fish.vy = Util.clamp(fish.vy, -0.5, 0.5);
+        fish.x = Util.clamp(fish.x + fish.vx * dt * width * 0.1, width * 0.15, width * 0.85);
+        fish.y = Util.clamp(fish.y + fish.vy * dt * height * 0.08, World.waterY() + height * 0.1, height * 0.9);
+
+        if (fish.isBoss) {
+          const progress = 1 - fish.stamina / fish.maxStamina;
+          fish.phase = progress > 0.7 ? 3 : progress > 0.35 ? 2 : 1;
+          if (fish.phase === 2) {
+            fish.vx += Math.sign(World.current) * 0.6 * dt;
+          }
+          if (fish.phase === 3) {
+            fish.burstCooldown = Math.min(fish.burstCooldown, 1.5);
+          }
+        }
+      },
+      applyStamina(delta) {
+        if (!this.fish) return;
+        this.fish.stamina = Util.clamp(this.fish.stamina + delta, 0, this.fish.maxStamina);
+      },
+      onCaught() {
+        if (!this.fish) return null;
+        const fish = this.fish;
+        this.fish = null;
+        return fish;
+      }
+    };
+
+    //RodLine
+    const RodLine = {
+      segments: [],
+      segmentCount: 18,
+      length: 0,
+      anchor: { x: 0, y: 0 },
+      init() {
+        this.segments = [];
+        for (let i = 0; i < this.segmentCount; i += 1) {
+          this.segments.push({ x: 0, y: 0, vx: 0, vy: 0 });
+        }
+      },
+      reset() {
+        const startX = width * 0.5;
+        const startY = World.waterY() - height * 0.15;
+        this.anchor.x = startX;
+        this.anchor.y = startY;
+        this.length = height * 0.35;
+        for (let i = 0; i < this.segmentCount; i += 1) {
+          const t = i / (this.segmentCount - 1);
+          this.segments[i].x = startX;
+          this.segments[i].y = startY + t * this.length;
+          this.segments[i].vx = 0;
+          this.segments[i].vy = 0;
+        }
+      },
+      update(dt, targetX, targetY, tension) {
+        const segs = this.segments;
+        segs[0].x = this.anchor.x;
+        segs[0].y = this.anchor.y;
+        for (let i = 1; i < segs.length; i += 1) {
+          const prev = segs[i - 1];
+          const seg = segs[i];
+          const dx = seg.x - prev.x;
+          const dy = seg.y - prev.y;
+          const dist = Math.hypot(dx, dy) || 1;
+          const desired = this.length / (segs.length - 1);
+          const diff = (dist - desired) / dist;
+          seg.x -= dx * diff * 0.5;
+          seg.y -= dy * diff * 0.5;
+          prev.x += dx * diff * 0.5;
+          prev.y += dy * diff * 0.5;
+          seg.vx += World.wind * dt * 12;
+          seg.vx *= 0.98;
+          seg.vy *= 0.98;
+          seg.x += seg.vx * dt * 60;
+          seg.y += seg.vy * dt * 60;
+        }
+        const tail = segs[segs.length - 1];
+        tail.x = Util.lerp(tail.x, targetX, 0.12 + tension * 0.08);
+        tail.y = Util.lerp(tail.y, targetY, 0.12 + tension * 0.08);
+      },
+      draw() {
+        ctx.save();
+        ctx.strokeStyle = '#9dd9ff';
+        ctx.lineWidth = 2 * dpr;
+        ctx.beginPath();
+        this.segments.forEach((seg, i) => {
+          if (i === 0) ctx.moveTo(seg.x, seg.y);
+          else ctx.lineTo(seg.x, seg.y);
+        });
+        ctx.stroke();
+        ctx.restore();
+      }
+    };
+
+    //ReelFight
+    const ReelFight = {
+      state: 'idle',
+      tension: 0,
+      rod: 1,
+      line: 1,
+      reelPower: 1,
+      lineElasticity: 0.3,
+      maxTension: 1,
+      biteChance: 0.5,
+      pumpBoost: 0,
+      breakTimer: 0,
+      setState(next) {
+        this.state = next;
+      },
+      reset() {
+        this.state = 'idle';
+        this.tension = 0;
+        this.rod = 1;
+        this.line = 1;
+        this.reelPower = 1;
+        this.lineElasticity = 0.3;
+        this.maxTension = 1;
+        this.biteChance = 0.5;
+        this.pumpBoost = 0;
+        this.breakTimer = 0;
+      },
+      update(dt) {
+        if (!FishAI.fish) return;
+        const fish = FishAI.fish;
+        const rodTipX = width * (0.5 + Input.angle * 0.4);
+        const rodTipY = World.waterY() - height * 0.18;
+        RodLine.anchor.x = rodTipX;
+        RodLine.anchor.y = rodTipY;
+
+        const dx = fish.x - rodTipX;
+        const dy = fish.y - rodTipY;
+        const dist = Math.hypot(dx, dy);
+        const desired = RodLine.length * (1 - this.lineElasticity * this.tension);
+        const stretch = dist - desired;
+
+        const reelForce = (Input.reel ? 1 : 0) * this.reelPower * (1 - (fish.burst > 0 ? 0.6 : 0));
+        const easeForce = (Input.ease ? 1 : 0) * 0.6;
+        const pumpForce = this.pumpBoost;
+        this.pumpBoost = Math.max(0, this.pumpBoost - dt * 1.2);
+
+        const tensionTarget = Util.clamp(stretch / (height * 0.15) + reelForce * 0.25 + pumpForce * 0.35 - easeForce * 0.35, 0, 1.4);
+        this.tension = Util.lerp(this.tension, tensionTarget, 0.12);
+
+        const effectivePull = (reelForce + pumpForce * 0.8) * (1 - (fish.burst > 0 ? 0.7 : 0));
+        fish.x -= dx / (dist || 1) * effectivePull * dt * 140;
+        fish.y -= dy / (dist || 1) * effectivePull * dt * 120;
+
+        if (fish.burst > 0) {
+          fish.x += dx / (dist || 1) * dt * 60;
+          fish.y += dy / (dist || 1) * dt * 40;
+          FishAI.applyStamina(0.12 * dt);
+        }
+
+        if (this.tension < 0.6 && Input.pump) {
+          FishAI.applyStamina(-0.25);
+          this.pumpBoost = 1.1;
+          Input.pump = false;
+          Audio.playSfx('pump');
+        }
+
+        const tensionDrain = this.tension > 0.7 ? -0.07 : -0.12;
+        FishAI.applyStamina(tensionDrain * dt);
+
+        if (this.tension > 0.8) {
+          this.breakTimer += dt * (this.tension - 0.8) * 1.4;
+        } else {
+          this.breakTimer = Math.max(0, this.breakTimer - dt);
+        }
+
+        const hazardFactor = World.hazardZones.reduce((acc, zone) => {
+          const dz = Math.hypot((fish.x / width) - zone.x, (fish.y / height) - zone.y);
+          return acc + (dz < zone.r ? 0.3 : 0);
+        }, 0);
+        if (hazardFactor > 0) {
+          this.line -= hazardFactor * dt * 0.15 * World.hazard;
+        }
+        if (this.tension > 0.95) {
+          this.line -= dt * 0.12 * (this.tension - 0.95);
+          this.rod -= dt * 0.08 * (this.tension - 0.95);
+        }
+
+        if (this.breakTimer > 1.4 || this.line <= 0 || this.rod <= 0) {
+          this.onBreak();
+        }
+
+        if (fish.stamina <= 0.02) {
+          const catchData = FishAI.onCaught();
+          this.onCatch(catchData);
+        }
+
+        RodLine.update(dt, fish.x, fish.y, this.tension);
+      },
+      onBreak() {
+        Audio.playSfx('break');
+        VFX.spawnSplash(width * 0.5, World.waterY());
+        state.lives -= 1;
+        state.combo = 1;
+        this.reset();
+        FishAI.fish = null;
+        if (state.lives <= 0) {
+          endRun();
+        }
+      },
+      onCatch(fish) {
+        if (!fish) return;
+        Audio.playSfx('catch');
+        VFX.spawnSplash(fish.x, fish.y);
+        const catchKg = Math.round(fish.weight * (1 + state.combo * 0.1));
+        state.score += catchKg;
+        state.combo += 1;
+        state.record = Math.max(state.record, fish.weight);
+        localStorage.setItem('ccvc_record', state.record.toFixed(1));
+        showCatchPopup(fish, catchKg);
+        spawnUpgradeCard();
+        FishAI.heat = Util.clamp(FishAI.heat + 0.2, 0, 1.5);
+        if (state.time > 120 || state.score > 400) {
+          FishAI.bossReady = true;
+        }
+        this.reset();
+      }
+    };
+
+    //UI
+    let popupTimer = 0;
+    let debugEnabled = false;
+    const upgrade = {
+      active: false,
+      options: [],
+      select(index) {
+        const opt = upgrade.options[index];
+        if (!opt) return;
+        opt.apply();
+        upgrade.active = false;
+        upgrade.options = [];
+      }
+    };
+
+    function showCatchPopup(fish, gain) {
+      hud.popup.innerHTML = `<strong>${fish.isBoss ? 'BOSS' : fish.rarity}</strong> +${gain}kg (${fish.weight.toFixed(1)}kg)`;
+      hud.popup.classList.add('show');
+      popupTimer = 2.2;
+    }
+
+    function spawnUpgradeCard() {
+      if (Math.random() < 0.45) return;
+      upgrade.active = true;
+      const options = [
+        { label: '+MaxTension', apply: () => ReelFight.maxTension += 0.05 },
+        { label: '+ReelPower', apply: () => ReelFight.reelPower += 0.08 },
+        { label: '+LineElasticity', apply: () => ReelFight.lineElasticity = Util.clamp(ReelFight.lineElasticity + 0.05, 0.1, 0.6) },
+        { label: '+RodDurability', apply: () => ReelFight.rod = Util.clamp(ReelFight.rod + 0.2, 0, 1) },
+        { label: '+BiteChance', apply: () => ReelFight.biteChance = Util.clamp(ReelFight.biteChance + 0.08, 0, 1) },
+        { label: '+Coin Bonus', apply: () => state.score += 15 }
+      ];
+      upgrade.options = options.sort(() => Math.random() - 0.5).slice(0, 3);
+    }
+
+    function renderUpgradeCard() {
+      if (!upgrade.active) return;
+      const cardWidth = width * 0.45;
+      const cardHeight = 160 * dpr;
+      ctx.save();
+      ctx.fillStyle = 'rgba(10, 18, 28, 0.85)';
+      ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+      ctx.lineWidth = 2 * dpr;
+      ctx.beginPath();
+      ctx.roundRect(width * 0.5 - cardWidth / 2, height * 0.35, cardWidth, cardHeight, 20 * dpr);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#fff';
+      ctx.font = `${18 * dpr}px Segoe UI`;
+      ctx.fillText('Chọn 1 nâng cấp', width * 0.5 - cardWidth / 2 + 20 * dpr, height * 0.35 + 32 * dpr);
+      upgrade.options.forEach((opt, i) => {
+        const x = width * 0.5 - cardWidth / 2 + 20 * dpr;
+        const y = height * 0.35 + 60 * dpr + i * 30 * dpr;
+        ctx.fillStyle = '#4ad6ff';
+        ctx.fillText(`${i + 1}. ${opt.label}`, x, y);
+      });
+      ctx.restore();
+    }
+
+    function handleUpgradeSelection(e) {
+      if (!upgrade.active) return;
+      const key = e.code;
+      if (key === 'Digit1') upgrade.select(0);
+      if (key === 'Digit2') upgrade.select(1);
+      if (key === 'Digit3') upgrade.select(2);
+    }
+
+    //Audio
+    const Audio = {
+      ctx: null,
+      master: 0.8,
+      music: 0.6,
+      sfx: 0.8,
+      musicNode: null,
+      init() {
+        if (!this.ctx) {
+          this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+      },
+      playSfx(type) {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        let freq = 440;
+        if (type === 'cast') freq = 300;
+        if (type === 'bite') freq = 520;
+        if (type === 'pump') freq = 640;
+        if (type === 'break') freq = 180;
+        if (type === 'catch') freq = 720;
+        if (type === 'burst') freq = 560;
+        osc.frequency.setValueAtTime(freq, now);
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.4 * this.sfx * this.master, now + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.4);
+        osc.connect(gain).connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.45);
+      },
+      startMusic() {
+        if (!this.ctx || this.musicNode) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        const filter = this.ctx.createBiquadFilter();
+        osc.type = 'sawtooth';
+        osc.frequency.value = 110;
+        filter.type = 'lowpass';
+        filter.frequency.value = 600;
+        gain.gain.value = 0.15 * this.music * this.master;
+        osc.connect(filter).connect(gain).connect(this.ctx.destination);
+        osc.start();
+        this.musicNode = { osc, gain, filter };
+      },
+      updateDanger(tension) {
+        if (!this.musicNode) return;
+        const target = Util.lerp(500, 1200, Util.clamp(tension, 0, 1));
+        this.musicNode.filter.frequency.value = target;
+        this.musicNode.gain.gain.value = 0.15 * this.music * this.master;
+      },
+      setVolumes(master, music, sfx) {
+        this.master = master;
+        this.music = music;
+        this.sfx = sfx;
+      }
+    };
+
+    //SaveLoad
+    function saveState() {
+      localStorage.setItem('ccvc_record', state.record.toFixed(1));
+    }
+
+    //VFX
+    const VFX = {
+      particles: [],
+      maxParticles: 120,
+      init() {
+        this.particles = [];
+        for (let i = 0; i < this.maxParticles; i += 1) {
+          this.particles.push({
+            active: false,
+            x: 0, y: 0, vx: 0, vy: 0, life: 0, type: 'bubble'
+          });
+        }
+      },
+      spawnSplash(x, y) {
+        for (let i = 0; i < 16; i += 1) {
+          const p = this.particles.find((pt) => !pt.active);
+          if (!p) break;
+          p.active = true;
+          p.x = x; p.y = y;
+          p.vx = Util.rand(-1, 1) * 60;
+          p.vy = Util.rand(-1, -0.2) * 90;
+          p.life = 1;
+          p.type = 'splash';
+        }
+      },
+      spawnBurst(x, y) {
+        for (let i = 0; i < 10; i += 1) {
+          const p = this.particles.find((pt) => !pt.active);
+          if (!p) break;
+          p.active = true;
+          p.x = x; p.y = y;
+          p.vx = Util.rand(-0.5, 0.5) * 40;
+          p.vy = Util.rand(-0.2, 0.2) * 40;
+          p.life = 1;
+          p.type = 'bubble';
+        }
+      },
+      update(dt) {
+        this.particles.forEach((p) => {
+          if (!p.active) return;
+          p.life -= dt;
+          if (p.life <= 0) { p.active = false; return; }
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+          p.vy += 30 * dt;
+        });
+      },
+      draw() {
+        ctx.save();
+        this.particles.forEach((p) => {
+          if (!p.active) return;
+          ctx.globalAlpha = Util.clamp(p.life, 0, 1);
+          if (p.type === 'splash') {
+            ctx.strokeStyle = '#bfe9ff';
+            ctx.lineWidth = 2 * dpr;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 6 * dpr, 0, Math.PI * 2);
+            ctx.stroke();
+          } else {
+            ctx.fillStyle = '#7fd9ff';
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 3 * dpr, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        });
+        ctx.restore();
+      }
+    };
+
+    //Debug
+    const Debug = {
+      fps: 0,
+      acc: 0,
+      frames: 0,
+      update(dt) {
+        this.acc += dt;
+        this.frames += 1;
+        if (this.acc >= 1) {
+          this.fps = this.frames;
+          this.frames = 0;
+          this.acc = 0;
+        }
+      },
+      draw() {
+        if (!debugEnabled) return;
+        const tension = ReelFight.tension.toFixed(2);
+        const fishState = FishAI.fish ? `${FishAI.fish.rarity} ${FishAI.fish.stamina.toFixed(2)}` : 'none';
+        hud.debug.textContent = `FPS: ${this.fps}\nTension: ${tension}\nFish: ${fishState}`;
+      }
+    };
+
+    //Render helpers
+    function drawBackground(time) {
+      const gradient = ctx.createLinearGradient(0, 0, 0, height);
+      gradient.addColorStop(0, '#050b18');
+      gradient.addColorStop(0.4, '#0b2238');
+      gradient.addColorStop(1, '#031018');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, width, height);
+
+      const waterY = World.waterY();
+      ctx.fillStyle = '#0e2f44';
+      ctx.fillRect(0, waterY, width, height - waterY);
+
+      ctx.save();
+      ctx.globalAlpha = 0.18;
+      ctx.strokeStyle = '#76d1ff';
+      ctx.lineWidth = 2 * dpr;
+      ctx.beginPath();
+      const waveAmp = 6 * dpr;
+      for (let x = 0; x <= width; x += 8 * dpr) {
+        const y = waterY + Math.sin((x / width) * Math.PI * 6 + time * 1.8) * waveAmp;
+        if (x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.save();
+      ctx.globalAlpha = 0.1;
+      ctx.fillStyle = '#fff';
+      for (let i = 0; i < 120; i += 1) {
+        const nx = (i * 37) % width;
+        const ny = (i * 53) % height;
+        ctx.fillRect(nx, ny, 1 * dpr, 1 * dpr);
+      }
+      ctx.restore();
+
+      ctx.save();
+      ctx.strokeStyle = 'rgba(100,200,160,0.2)';
+      ctx.lineWidth = 2 * dpr;
+      World.hazardZones.forEach((zone) => {
+        ctx.beginPath();
+        ctx.arc(zone.x * width, zone.y * height, zone.r * width, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+      ctx.restore();
+    }
+
+    function drawFish(fish) {
+      if (!fish) return;
+      ctx.save();
+      ctx.translate(fish.x, fish.y);
+      const scale = Util.clamp(fish.weight / 120, 0.6, 1.6);
+      ctx.scale(scale, scale);
+      ctx.fillStyle = fish.isBoss ? '#ffd166' : '#9dd9ff';
+      ctx.strokeStyle = fish.rarity === 'Legendary' || fish.rarity === 'Boss' ? 'rgba(255,220,140,0.8)' : 'rgba(100,200,255,0.6)';
+      ctx.lineWidth = 2 * dpr;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 26 * dpr, 14 * dpr, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.8)';
+      ctx.beginPath();
+      ctx.arc(8 * dpr, -2 * dpr, 2.5 * dpr, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#2b3a50';
+      ctx.beginPath();
+      ctx.moveTo(-24 * dpr, 0);
+      ctx.lineTo(-36 * dpr, -8 * dpr);
+      ctx.lineTo(-36 * dpr, 8 * dpr);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+
+      if (fish.rarity === 'Epic' || fish.rarity === 'Legendary' || fish.isBoss) {
+        ctx.save();
+        ctx.strokeStyle = fish.isBoss ? 'rgba(255,170,60,0.8)' : 'rgba(120,220,255,0.6)';
+        ctx.lineWidth = 6 * dpr;
+        ctx.globalAlpha = 0.2;
+        ctx.beginPath();
+        ctx.arc(fish.x, fish.y, 30 * dpr * scale, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    function drawRod() {
+      ctx.save();
+      const rodBaseX = width * 0.5;
+      const rodBaseY = World.waterY() - height * 0.05;
+      const angle = -Math.PI / 2 + Input.angle * 0.8;
+      const length = height * 0.22;
+      ctx.strokeStyle = '#caa472';
+      ctx.lineWidth = 4 * dpr;
+      ctx.beginPath();
+      ctx.moveTo(rodBaseX, rodBaseY);
+      ctx.lineTo(rodBaseX + Math.cos(angle) * length, rodBaseY + Math.sin(angle) * length);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawTensionEffects() {
+      if (ReelFight.tension > 0.85) {
+        const shake = (ReelFight.tension - 0.85) * 8;
+        ctx.translate(Util.rand(-shake, shake), Util.rand(-shake, shake));
+      }
+    }
+
+    function updateHud() {
+      hud.tension.style.transform = `scaleX(${Util.clamp(ReelFight.tension, 0, 1)})`;
+      hud.stamina.style.transform = `scaleX(${FishAI.fish ? Util.clamp(FishAI.fish.stamina / FishAI.fish.maxStamina, 0, 1) : 0})`;
+      hud.rod.style.transform = `scaleX(${Util.clamp(ReelFight.rod, 0, 1)})`;
+      hud.line.style.transform = `scaleX(${Util.clamp(ReelFight.line, 0, 1)})`;
+      hud.score.textContent = state.score.toFixed(0);
+      hud.combo.textContent = state.combo.toFixed(0);
+      hud.time.textContent = Util.formatTime(state.time);
+      hud.record.textContent = state.record.toFixed(1);
+      if (popupTimer > 0) {
+        popupTimer -= 1 / 60;
+        if (popupTimer <= 0) hud.popup.classList.remove('show');
+      }
+    }
+
+    function updateCooldownUI(dt) {
+      document.querySelectorAll('.control-btn').forEach((btn) => {
+        const cooldown = btn.querySelector('.cooldown');
+        if (!cooldown) return;
+        let ratio = 0;
+        if (btn.dataset.action === 'pump') {
+          ratio = Util.clamp(Input.pumpCooldown / 1.6, 0, 1);
+        }
+        cooldown.style.transform = `scaleY(${ratio})`;
+      });
+      if (Input.pumpCooldown > 0) {
+        Input.pumpCooldown = Math.max(0, Input.pumpCooldown - dt);
+      }
+    }
+
+    function updateState(dt) {
+      if (upgrade.active) return;
+      FishAI.update(dt);
+      ReelFight.update(dt);
+      VFX.update(dt);
+      Audio.updateDanger(ReelFight.tension);
+    }
+
+    function render() {
+      ctx.save();
+      drawBackground(state.time);
+      drawTensionEffects();
+      drawRod();
+      RodLine.draw();
+      drawFish(FishAI.fish);
+      VFX.draw();
+      renderUpgradeCard();
+      ctx.restore();
+    }
+
+    function loop(now) {
+      if (!state.running) return;
+      if (!state.lastTime) state.lastTime = now;
+      const delta = Math.min(0.05, (now - state.lastTime) / 1000);
+      state.lastTime = now;
+      if (!state.paused) {
+        state.accumulator += delta;
+        const step = 1 / 60;
+        while (state.accumulator >= step) {
+          state.time += step;
+          updateState(step);
+          updateCooldownUI(step);
+          Debug.update(step);
+          state.accumulator -= step;
+        }
+        updateHud();
+        render();
+        Debug.draw();
+      }
+      requestAnimationFrame(loop);
+    }
+
+    function startGame() {
+      state.running = true;
+      state.paused = false;
+      state.score = 0;
+      state.combo = 1;
+      state.lives = 3;
+      state.time = 0;
+      FishAI.fish = null;
+      FishAI.bossReady = false;
+      FishAI.heat = 0;
+      World.initRunModifiers();
+      ReelFight.reset();
+      RodLine.reset();
+      VFX.init();
+      Audio.init();
+      Audio.startMusic();
+      startOverlay.style.display = 'none';
+      requestAnimationFrame(loop);
+      Audio.playSfx('cast');
+    }
+
+    function togglePause() {
+      if (!state.running) return;
+      state.paused = !state.paused;
+      pauseOverlay.style.display = state.paused ? 'flex' : 'none';
+    }
+
+    function endRun() {
+      state.paused = true;
+      pauseOverlay.style.display = 'flex';
+    }
+
+    // Core event bindings
+    startBtn.addEventListener('click', () => {
+      Audio.init();
+      Audio.startMusic();
+      startGame();
+    });
+    resumeBtn.addEventListener('click', () => {
+      state.paused = false;
+      pauseOverlay.style.display = 'none';
+    });
+    document.addEventListener('keydown', handleUpgradeSelection);
+
+    document.getElementById('vol-master').addEventListener('input', (e) => {
+      Audio.setVolumes(parseFloat(e.target.value), Audio.music, Audio.sfx);
+    });
+    document.getElementById('vol-music').addEventListener('input', (e) => {
+      Audio.setVolumes(Audio.master, parseFloat(e.target.value), Audio.sfx);
+    });
+    document.getElementById('vol-sfx').addEventListener('input', (e) => {
+      Audio.setVolumes(Audio.master, Audio.music, parseFloat(e.target.value));
+    });
+
+    function resize() {
+      dpr = window.devicePixelRatio || 1;
+      width = Math.floor(window.innerWidth * dpr);
+      height = Math.floor(window.innerHeight * dpr);
+      canvas.width = width;
+      canvas.height = height;
+      canvas.style.width = `${window.innerWidth}px`;
+      canvas.style.height = `${window.innerHeight}px`;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+    }
+    window.addEventListener('resize', resize);
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) state.paused = true;
+    });
+
+    resize();
+    Input.init();
+    RodLine.init();
+    VFX.init();
+    saveState();
+  </script>
+</body>
+</html>
